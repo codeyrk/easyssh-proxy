@@ -129,8 +129,8 @@ func getSSHConfig(config DefaultConfig) (*ssh.ClientConfig, io.Closer) {
 }
 
 // Connect to remote server using MakeConfig struct and returns *ssh.Session
-func (ssh_conf *MakeConfig) Connect() (*ssh.Session, *ssh.Client, error) {
-	var client *ssh.Client
+func (ssh_conf *MakeConfig) Connect() (*ssh.Session, *ssh.Client, *ssh.Client, error) {
+	var client, proxyClient *ssh.Client
 	var err error
 
 	targetConfig, closer := getSSHConfig(DefaultConfig{
@@ -161,33 +161,33 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, *ssh.Client, error) {
 
 		proxyClient, err := ssh.Dial("tcp", net.JoinHostPort(ssh_conf.Proxy.Server, ssh_conf.Proxy.Port), proxyConfig)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		conn, err := proxyClient.Dial("tcp", net.JoinHostPort(ssh_conf.Server, ssh_conf.Port))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		ncc, chans, reqs, err := ssh.NewClientConn(conn, net.JoinHostPort(ssh_conf.Server, ssh_conf.Port), targetConfig)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		client = ssh.NewClient(ncc, chans, reqs)
 	} else {
 		client, err = ssh.Dial("tcp", net.JoinHostPort(ssh_conf.Server, ssh_conf.Port), targetConfig)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return session, client, nil
+	return session, client, proxyClient, nil
 }
 
 // Stream returns one channel that combines the stdout and stderr of the command
@@ -201,7 +201,7 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout ...time.Duration) (<-
 	errChan := make(chan error)
 
 	// connect to remote host
-	session, client, err := ssh_conf.Connect()
+	session, client, _, err := ssh_conf.Connect()
 	if err != nil {
 		return stdoutChan, stderrChan, doneChan, errChan, err
 	}
@@ -307,7 +307,7 @@ loop:
 
 // Scp uploads sourceFile to remote machine like native scp console app.
 func (ssh_conf *MakeConfig) Scp(sourceFile string, etargetFile string) error {
-	session, client, err := ssh_conf.Connect()
+	session, client, _, err := ssh_conf.Connect()
 
 	if err != nil {
 		return err
