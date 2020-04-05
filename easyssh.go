@@ -159,7 +159,7 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, *ssh.Client, *ssh.Client, e
 			defer closer.Close()
 		}
 
-		proxyClient, err := ssh.Dial("tcp", net.JoinHostPort(ssh_conf.Proxy.Server, ssh_conf.Proxy.Port), proxyConfig)
+		proxyClient, err = ssh.Dial("tcp", net.JoinHostPort(ssh_conf.Proxy.Server, ssh_conf.Proxy.Port), proxyConfig)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -233,7 +233,10 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout ...time.Duration) (<-
 		defer close(errChan)
 		defer session.Close()
 		defer client.Close()
-		defer proxyClient.Close()
+
+		if proxyClient != nil {
+			defer proxyClient.Close()
+		}
 
 		// default timeout value
 		executeTimeout := defaultTimeout
