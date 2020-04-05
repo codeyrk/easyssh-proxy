@@ -233,10 +233,7 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout ...time.Duration) (<-
 		defer close(errChan)
 		defer session.Close()
 		defer client.Close()
-
-		if proxyClient != nil {
-			defer proxyClient.Close()
-		}
+		defer proxyClient.Close()
 
 		// default timeout value
 		executeTimeout := defaultTimeout
