@@ -201,7 +201,7 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout ...time.Duration) (<-
 	errChan := make(chan error)
 
 	// connect to remote host
-	session, client, _, err := ssh_conf.Connect()
+	session, client, proxyClient, err := ssh_conf.Connect()
 	if err != nil {
 		return stdoutChan, stderrChan, doneChan, errChan, err
 	}
@@ -233,6 +233,10 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout ...time.Duration) (<-
 		defer close(errChan)
 		defer session.Close()
 		defer client.Close()
+
+		if proxyClient != nil {
+			defer proxyClient.Close()
+		}
 
 		// default timeout value
 		executeTimeout := defaultTimeout
